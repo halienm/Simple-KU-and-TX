@@ -1,0 +1,316 @@
+Install
+
+$ NEW_ENV=~/.virtualenv-pycoinnetwork # or whatever path you'd like to use
+$ python3 -m venv $NEW_ENV
+$ source $NEW_ENV/bin/activate
+
+
+$ pip install -r requirements.txt
+$ pip install .
+
+
+Try the SPV Demo
+$ mkdir -p ~/.wallet/default
+$ echo 1Q2TWHE3GMdB6BZKafqwxXtWAWgFt5Jvm3 > ~/.wallet/default/watch_addresses  # first transaction ever, block 170
+$ echo 1CaNHx4vzpmPBv4a6U7pcKQF6R8U6JeLUy >> ~/.wallet/default/watch_addresses # very common address starting block 258045
+$ ku -ua 1 >> ~/.wallet/default/watch_addresses # address for secret exponent 1
+$ PYTHONPATH=`pwd` python pycoinnet/examples/wallet.py
+
+
+
+from pycoin.symbols.btc import network
+OR
+from pycoin.networks.registry import network_for_netcode
+network = network_for_netcode("BTC")
+
+Keys
+
+You can create a private key and get the corresponding address.
+
+from pycoin.symbols.btc import network
+
+key = network.keys.private(secret_exponent=1)  # this is a terrible key because it's very guessable
+print(key.wif())
+print(key.sec())
+print(key.address())
+print(key.address(is_compressed=False))
+
+same_key = network.parse.private(key.wif())
+print(same_key.address())
+
+BIP32
+
+You can create a BIP32 key.
+
+key = network.keys.bip32_seed(b"foo")  # this is a terrible key because it's very guessable
+print(key.hwif(as_private=1))
+print(key.hwif())
+print(key.wif())
+print(key.sec())
+print(key.address())
+
+You can parse a BIP32 key.
+
+key = network.parse.bip32("xprv9s21ZrQH143K31AgNK5pyVvW23gHnkBq2wh5aEk6g1s496M"
+      "8ZMjxncCKZKgb5jZoY5eSJMJ2Vbyvi2hbmQnCuHBujZ2WXGTux1X2k9Krdtq")
+print(key.hwif(as_private=1))
+print(key.hwif())
+print(key.wif())
+print(key.sec())
+print(key.address())
+
+
+The module pycoin.services includes two functions spendables_for_address, get_tx_db that look at the environment variables set to determine which web sites to use to fetch the underlying information. The sites are polled in the order they are listed in the environment variable.
+
+ECDSA Signing and Verification
+
+
+    the secret_exponent (a large integer that represents a private key)
+    the public_pair (a pair of large integers x and y that represent a public key)
+
+
+The pycoin.ecdsa.native module looks for both OpenSSL and libsecp256k1 (with hints from PYCOIN_LIBCRYPTO_PATH and PYCOIN_LIBSECP256K1_PATH) and calls out to these libraries if they are present to accelerate ecdsa operations. Set PYCOIN_NATIVE to openssl, secp256k1 or none to tweak this.
+
+$ PYCOIN_NATIVE=openssl
+$ export PYCOIN_NATIVE
+
+
+
+
+**********************************************************************
+-----------------------------------------------------------------------
+
+##
+blockchain.com live.blockcypher.com explorer.bitcoin.com blockchair.com
+
+##
+>> Create a BIP32 Key using the default entropy sources of GPG and /dev/random
+ku create
+>> Create a BIP32 key from a passphrase
+ku P:foo
+>> Get info as JSON
+ku P:foofoo -P -j 
+>> Public BIP32 Key
+ku -w -P P:foofoo
+>> Generate a subkey
+ku -w -s3/2 P:foofoo
+>> Hardened subkey
+ku -w -s3/2H P:foofoo
+>> WIF
+ku -W P:foofoo
+>> Address
+ku -a P:foofoo
+>> Generate a bunch of subkeys
+ku P:foofoo -s 0/0-5 -w
+>> Generate the corresponding addresses
+ku P:foofoo -s 0/0-5 -a
+>> Generate the corresponding WIFs
+ku P:foo -s 0/0-5 -W
+>> Check that it works by choosing a BIP32 strin
+ku -W ..key
+ku -a ..key
+>> From secret exponent
+ku 1
+>> Litecoin version
+ku -nLTC 1
+>> Dogecoin WIF
+ku -nDOGE -W 1
+>> From public pair (on Testnet)
+ku -nXTN 55066263022277343669578718895168534326250603453777594175500187360389116729240,even
+>> From hash160
+ku 751e76e8199196d454941c45d1b3a323f1433bd6
+>> As a Dogecoin address
+ku -nDOGE 751e76e8199196d454941c45d1b3a323f1433bd6
+
+>>##
+
+## tx
+
+>> (blockchain.com, live.blockcypher.com, explorer.bitcoin.com, blockchair.com)
+
+    PYCOIN_CACHE_DIR=~/.pycoin_cache
+    PYCOIN_BTC_PROVIDERS="blockchain.info blockexplorer.com chain.so"
+    export PYCOIN_CACHE_DIR PYCOIN_BTC_PROVIDERS
+    export PYCOIN_XTN_PROVIDERS="blockchain.info"  # For Bitcoin testnet
+    
+    PYCOIN_NATIVE=openssl
+    export PYCOIN_NATIVE
+
+tx 49d2adb6e476fa46d8357babf78b1b501fd39e177ac7833124b3f67b17c40c2a
+tx -a 49d2adb6e476fa46d8357babf78b1b501fd39e177ac7833124b3f67b17c40c2a
+
+>> transactions have been cached
+ls ~/.pycoin_cache/txs/
+
+>> use tx -i to find all coins in this address
+tx -i 12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX
+
+>> write a transaction that sends these coins to my donation address
+tx 0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098/0/410496b538e853519c726a2c91e61ec11600ae1390813a627c66fb8be7947be63c52da7589379515d4e0a604f8141781e62294721166bf621e73a82cbf2342c858eeac/5000000000 1KissFDVu2wAYWPRm4UGh5ZCDU9sE9an8T -o tx.bin
+
+>> all incoming transaction values validated
+ls -l tx.bin
+
+>> Now, let's dump it
+tx tx.bin
+
+>> If we had the private key, we could sign it like this
+tx tx.bin -f wifs.gpg -o signed_tx.bin
+
+##
+ Yep, if the file passed to -f ends with ```.gpg```, then ```gpg -d``` is automatically invoked, and you can type your GPG passphrase. So ```tx``` plus ```gpg``` is actually a pretty reasonably secure solution! And if you keep your WIF.gpg file on an airgapped machine, this solves the problem of cold storage
+
+>>
+shasum tx.bin signed_tx.bin
+
+>> use ```-i``` to fetch all unspents (via the web)
+tx -F 85000 -i 12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX 1KissFDVu2wAYWPRm4UGh5ZCDU9sE9an8T 1KissEskteXTAXbh17qJYLtMes1B6kJxZj 12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX/50
+
+>> signing a transaction
+ku -a -u 1
+tx -u d61aa2a5f5bce59d2a57447134f7ce9ce9d29b5c471f4bf747c43bf82aa26c2a
+
+>> The ```-u``` shows the unspents, which can be passed as inputs to tx
+tx d61aa2a5f5bce59d2a57447134f7ce9ce9d29b5c471f4bf747c43bf82aa26c2a/1/76a91491b24bf9f5288532960ac687abb035127b1d28a588ac/12345678 1KissFDVu2wAYWPRm4UGh5ZCDU9sE9an8T -o tx.bin
+
+>> all incoming transaction values validated
+
+tx tx.bin
+
+>> let's sign it
+tx tx.bin KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn -o signed_tx.hex
+cat signed_tx.hex
+tx -a signed_tx.hex
+
+*****************************************************
+***** all incoming transaction values validated *****
+*****************************************************
+
+## >> TX USAGE >> $$
+
+usage: tx [-h] [-t TRANSACTION_VERSION] [-l LOCK_TIME]
+          [-n {ARG,AXE,BC,BCH,BSD,BTC,BTCD,BTDX,BTG,BTX,CHA,DASH,DCR,DCRT,DFC,DGB,DOGE,FAI,FTC,FTX,GRS,JBS,LTC,MEC,MONA,MZC,PIVX,POLIS,RIC,STRAT,TBTX,TDASH,TMONA,TPIVX,TVI,VIA,XCH,XDT,XLT,XMY,XRT,XTG,XTN,ZEC}]
+          [-a] [-s] [-i address] [-I] [-k KEYCHAIN] [-K KEY_PATHS] [-f path-to-private-keys] [-g GPG_ARGUMENT]
+          [--remove-tx-in tx_in_index_to_delete] [--remove-tx-out tx_out_index_to_delete] [--replace-input-script tx_in_script_slash_hex]
+          [-F transaction-fee] [-C] [--db DB] [-u] [-b BITCOIND_URL] [-o path-to-output-file] [-d] [--pdb] [--trace] [-p pay-to-script]
+          [--signature known-good-signature] [--sec known-sec] [-P pay-to-script-file] [--dump-signatures] [--dump-secs] [--coinbase COINBASE]
+          [argument ...]
+
+Manipulate bitcoin (or alt coin) transactions.
+
+positional arguments:
+  argument              generic argument: can be a hex transaction id (exactly 64 characters) to be fetched from cache or a web service; a
+                        transaction as a hex string; a path name to a transaction to be loaded; a spendable 4-tuple of the form
+                        tx_id/tx_out_idx/script_hex/satoshi_count to be added to TxIn list; an address/satoshi_count to be added to the TxOut
+                        list; an address or script to be added to the TxOut list and placed in the "split pool".
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t TRANSACTION_VERSION, --transaction-version TRANSACTION_VERSION
+                        Transaction version, either 1 (default) or 3 (not yet supported).
+  -l LOCK_TIME, --lock-time LOCK_TIME
+                        Lock time; either a blockindex, or a date/time (example: "2014-01-01T15:00:00"
+  -n {ARG,AXE,BC,BCH,BSD,BTC,BTCD,BTDX,BTG,BTX,CHA,DASH,DCR,DCRT,DFC,DGB,DOGE,FAI,FTC,FTX,GRS,JBS,LTC,MEC,MONA,MZC,PIVX,POLIS,RIC,STRAT,TBTX,TDASH,TMONA,TPIVX,TVI,VIA,XCH,XDT,XLT,XMY,XRT,XTG,XTN,ZEC}, --network {ARG,AXE,BC,BCH,BSD,BTC,BTCD,BTDX,BTG,BTX,CHA,DASH,DCR,DCRT,DFC,DGB,DOGE,FAI,FTC,FTX,GRS,JBS,LTC,MEC,MONA,MZC,PIVX,POLIS,RIC,STRAT,TBTX,TDASH,TMONA,TPIVX,TVI,VIA,XCH,XDT,XLT,XMY,XRT,XTG,XTN,ZEC}
+                        Default network code (environment variable PYCOIN_DEFAULT_NETCODE or "BTC"=Bitcoin mainnet if unset
+  -a, --augment         augment tx by adding any missing spendable metadata by fetching inputs from cache and/or web services
+  -s, --verbose-signature
+                        Display technical signature details.
+  -i address, --fetch-spendables address
+                        Add all unspent spendables for the given bitcoin address. This information is fetched from web services. With no outputs,
+                        incoming spendables will be printed.
+  -I, --dump-inputs     Dump inputs to this transaction.
+  -k KEYCHAIN, --keychain KEYCHAIN
+                        path to keychain file for hierarchical key hints (SQLite3 file created with keychain tool)
+  -K KEY_PATHS, --key-paths KEY_PATHS
+                        Key path hints to search hiearachical private keys (example: 0/0H/0-20)
+  -f path-to-private-keys, --private-key-file path-to-private-keys
+                        file containing WIF or BIP0032 private keys. If file name ends with .gpg, "gpg -d" will be invoked automatically. File is
+                        read one line at a time, and if the file contains only one WIF per line, it will also be scanned for a bitcoin address,
+                        and any addresses found will be assumed to be public keys for the given private key.
+  -g GPG_ARGUMENT, --gpg-argument GPG_ARGUMENT
+                        argument to pass to gpg (besides -d).
+  --remove-tx-in tx_in_index_to_delete
+                        remove a tx_in
+  --remove-tx-out tx_out_index_to_delete
+                        remove a tx_out
+  --replace-input-script tx_in_script_slash_hex
+                        replace an input script: arg looks like "1/796a"
+  -F transaction-fee, --fee transaction-fee
+                        fee, in satoshis, to pay on transaction, or "standard" to auto-calculate. This is only useful if the "split pool" is used;
+                        otherwise, the fee is automatically set to the unclaimed funds.
+  -C, --cache           force the resultant transaction into the transaction cache. Mostly for testing.
+  --db DB               force the transaction expressed by the given hex into a RAM-based transaction cache. Mostly for testing.
+  -u, --show-unspents   show TxOut items for this transaction in Spendable form.
+  -b BITCOIND_URL, --bitcoind-url BITCOIND_URL
+                        URL to bitcoind instance to validate against (http://user:pass@host:port).
+  -o path-to-output-file, --output-file path-to-output-file
+                        file to write transaction to. This supresses most other output.
+  -d, --disassemble     Disassemble scripts.
+  --pdb                 Enter PDB debugger on each script instruction.
+  --trace               Trace scripts.
+  -p pay-to-script, --pay-to-script pay-to-script
+                        a hex version of a script required for a pay-to-scriptinput (a bitcoin address that starts with 3)
+  --signature known-good-signature
+                        a hex version of a signature that will be used if useful
+  --sec known-sec       a hex version of an SEC that will be used if useful
+  -P pay-to-script-file, --pay-to-script-file pay-to-script-file
+                        a file containing hex scripts (one per line) corresponding to pay-to-script inputs
+  --dump-signatures     print signatures (for use with --signature)
+  --dump-secs           print secs (for use with --sec)
+  --coinbase COINBASE   add an input as a coinbase from the given address
+
+Files are binary by default unless they end with the suffix ".hex". Known networks codes: ARG (Argentum mainnet), AXE (Axe mainnet), BC (Blackcoin
+mainnet), BCH (Bcash mainnet), BSD (BitSend mainnet), BTC (Bitcoin mainnet), BTCD (BitcoinDark mainnet), BTDX (Bitcloud mainnet), BTG (Bgold
+mainnet), BTX (BitCore mainnet), CHA (Chaucha mainnet), DASH (Dash mainnet), DCR (Decred mainnet), DCRT (Decred testnet), DFC (DEFCOIN mainnet),
+DGB (Digibyte mainnet), DOGE (Dogecoin mainnet), FAI (Faircoin mainnet), FTC (Feathercoin mainnet), FTX (Feathercoin testnet), GRS (Groestlcoin
+mainnet), JBS (Jumbucks mainnet), LTC (Litecoin mainnet), MEC (Megacoin mainnet), MONA (Monacoin mainnet), MZC (Mazacoin mainnet), PIVX (PIVX
+mainnet), POLIS (Polis mainnet), RIC (Riecoin mainnet), STRAT (Strat mainnet), TBTX (BitCore testnet3), TDASH (Dash testnet), TMONA (Monacoin
+testnet4), TPIVX (PIVX testnet), TVI (Viacoin testnet), VIA (Viacoin mainnet), XCH (Bcash testnet3), XDT (Dogecoin testnet), XLT (Litecoin
+testnet), XMY (Myriadcoin mainnet), XRT (Bitcoin regtest), XTG (Bgold testnet), XTN (Bitcoin testnet3), ZEC (Zcash mainnet)
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#############################################################################################################################
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## >> KU USAGE $$ >>
+
+usage: ku [-h] [-w] [-W] [-a] [-u] [-P] [-j] [-b [BRIEF ...]] [-s SUBKEY]
+          [-n {ARG,AXE,BC,BCH,BSD,BTC,BTCD,BTDX,BTG,BTX,CHA,DASH,DCR,DCRT,DFC,DGB,DOGE,FAI,FTC,FTX,GRS,JBS,LTC,MEC,MONA,MZC,PIVX,POLIS,RIC,STRAT,TBTX,TDASH,TMONA,TPIVX,TVI,VIA,XCH,XDT,XLT,XMY,XRT,XTG,XTN,ZEC}]
+          [--override-network {ARG,AXE,BC,BCH,BSD,BTC,BTCD,BTDX,BTG,BTX,CHA,DASH,DCR,DCRT,DFC,DGB,DOGE,FAI,FTC,FTX,GRS,JBS,LTC,MEC,MONA,MZC,PIVX,POLIS,RIC,STRAT,TBTX,TDASH,TMONA,TPIVX,TVI,VIA,XCH,XDT,XLT,XMY,XRT,XTG,XTN,ZEC}]
+          [item ...]
+
+Crypto coin utility ku ("key utility") to show information about Bitcoin or other cryptocoin data structures.
+
+positional arguments:
+  item                  a BIP0032 wallet key string; a WIF; a bitcoin address; an SEC (ie. a 66 hex chars starting with 02, 03 or a 130 hex chars
+                        starting with 04); the literal string "create" to create a new wallet key using strong entropy sources; P:wallet
+                        passphrase (NOT RECOMMENDED); H:wallet passphrase in hex (NOT RECOMMENDED); E:electrum value (either a master public,
+                        master private, or initial data); secret_exponent (in decimal or hex); x,y where x,y form a public pair (y is a number or
+                        one of the strings "even" or "odd"); hash160 (as 40 hex characters). If this argument is missing, input data will be read
+                        from stdin.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -w, --wallet          show just Bitcoin wallet key
+  -W, --wif             show just Bitcoin WIF
+  -a, --address         show just Bitcoin address
+  -u, --uncompressed    show output in uncompressed form
+  -P, --public          only show public version of wallet keys
+  -j, --json            output as JSON
+  -b [BRIEF ...], --brief [BRIEF ...]
+                        brief output; display a single field
+  -s SUBKEY, --subkey SUBKEY
+                        subkey path (example: 0H/2/15-20)
+  -n {ARG,AXE,BC,BCH,BSD,BTC,BTCD,BTDX,BTG,BTX,CHA,DASH,DCR,DCRT,DFC,DGB,DOGE,FAI,FTC,FTX,GRS,JBS,LTC,MEC,MONA,MZC,PIVX,POLIS,RIC,STRAT,TBTX,TDASH,TMONA,TPIVX,TVI,VIA,XCH,XDT,XLT,XMY,XRT,XTG,XTN,ZEC}, --network {ARG,AXE,BC,BCH,BSD,BTC,BTCD,BTDX,BTG,BTX,CHA,DASH,DCR,DCRT,DFC,DGB,DOGE,FAI,FTC,FTX,GRS,JBS,LTC,MEC,MONA,MZC,PIVX,POLIS,RIC,STRAT,TBTX,TDASH,TMONA,TPIVX,TVI,VIA,XCH,XDT,XLT,XMY,XRT,XTG,XTN,ZEC}
+                        specify network
+  --override-network {ARG,AXE,BC,BCH,BSD,BTC,BTCD,BTDX,BTG,BTX,CHA,DASH,DCR,DCRT,DFC,DGB,DOGE,FAI,FTC,FTX,GRS,JBS,LTC,MEC,MONA,MZC,PIVX,POLIS,RIC,STRAT,TBTX,TDASH,TMONA,TPIVX,TVI,VIA,XCH,XDT,XLT,XMY,XRT,XTG,XTN,ZEC}
+                        override detected network type
+
+Known networks codes: ARG (Argentum mainnet), AXE (Axe mainnet), BC (Blackcoin mainnet), BCH (Bcash mainnet), BSD (BitSend mainnet), BTC (Bitcoin
+mainnet), BTCD (BitcoinDark mainnet), BTDX (Bitcloud mainnet), BTG (Bgold mainnet), BTX (BitCore mainnet), CHA (Chaucha mainnet), DASH (Dash
+mainnet), DCR (Decred mainnet), DCRT (Decred testnet), DFC (DEFCOIN mainnet), DGB (Digibyte mainnet), DOGE (Dogecoin mainnet), FAI (Faircoin
+mainnet), FTC (Feathercoin mainnet), FTX (Feathercoin testnet), GRS (Groestlcoin mainnet), JBS (Jumbucks mainnet), LTC (Litecoin mainnet), MEC
+(Megacoin mainnet), MONA (Monacoin mainnet), MZC (Mazacoin mainnet), PIVX (PIVX mainnet), POLIS (Polis mainnet), RIC (Riecoin mainnet), STRAT
+(Strat mainnet), TBTX (BitCore testnet3), TDASH (Dash testnet), TMONA (Monacoin testnet4), TPIVX (PIVX testnet), TVI (Viacoin testnet), VIA
+(Viacoin mainnet), XCH (Bcash testnet3), XDT (Dogecoin testnet), XLT (Litecoin testnet), XMY (Myriadcoin mainnet), XRT (Bitcoin regtest), XTG
+(Bgold testnet), XTN (Bitcoin testnet3), ZEC (Zcash mainnet)
